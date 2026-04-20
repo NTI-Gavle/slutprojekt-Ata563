@@ -53,7 +53,15 @@
                         return;
                     }
 
-                    document.getElementById("status").innerText = "Nuvarande spelare: " + data.current_player;
+                    let statusText = "Nuvarande spelare: " + data.current_player;
+
+                    if (data.player2 && data.player2 !== "") {
+                        statusText += " | 2 spelare är med";
+                    } else {
+                        statusText += " | Väntar på spelare 2";
+                    }
+
+                    document.getElementById("status").innerText = statusText;
 
                     const board = document.getElementById("board");
                     board.innerHTML = "";

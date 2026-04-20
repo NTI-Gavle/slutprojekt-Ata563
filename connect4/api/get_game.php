@@ -27,6 +27,8 @@ echo json_encode([
     "board" => json_decode($game["board"]),
     "current_player" => $game["current_player"],
     "winner" => $game["winner"],
-    "status" => $game["status"]
+    "status" => $game["status"],
+    "player1" => $game["player1"],
+    "player2" => $game["player2"]
 ]);
 ?>
