@@ -4,87 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spel - 4 i rad</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-        }
 
-        #board {
-            display: grid;
-            grid-template-columns: repeat(7, 60px);
-            gap: 5px;
-            justify-content: center;
-            margin-top: 20px;
-        }
-
-        .cell {
-            width: 60px;
-            height: 60px;
-            background-color: lightgray;
-            border-radius: 50%;
-            border: 1px solid black;
-        }
-
-        .player1 {
-            background-color: red;
-        }
-
-        .player2 {
-            background-color: gold;
-        }
-    </style>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css?v=3">
 </head>
 <body>
-    <h1>4 i rad</h1>
-    <p id="status">Laddar spel...</p>
-    <div id="board"></div>
 
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        const gameId = params.get("game_id");
+    <div class="container text-center mt-4">
+        <h1>4 i rad</h1>
+        <p id="status">Laddar spel...</p>
+        <div id="board"></div>
+    </div>
 
-        function loadGame() {
-            fetch("api/get_game.php?game_id=" + gameId)
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        document.getElementById("status").innerText = data.message;
-                        return;
-                    }
+    <div id="confetti"></div>
 
-                    let statusText = "Nuvarande spelare: " + data.current_player;
+    <div id="winnerPopup" class="winner-popup">
+        <div class="winner-box">
+            <div class="winner-ring"></div>
+            <div class="winner-title" id="winnerTitle">Victory</div>
+            <div id="winnerText" class="winner-text">Spelare 1 vann!</div>
+            <div class="popup-btns popup-btns-row">
+                <button id="playAgainBtn" class="popup-small-btn">Spela igen</button>
+                <button id="closePopupBtn" class="popup-small-btn">Stäng</button>
+            </div>
+        </div>
+    </div>
 
-                    if (data.player2 && data.player2 !== "") {
-                        statusText += " | 2 spelare är med";
-                    } else {
-                        statusText += " | Väntar på spelare 2";
-                    }
-
-                    document.getElementById("status").innerText = statusText;
-
-                    const board = document.getElementById("board");
-                    board.innerHTML = "";
-
-                    for (let row = 0; row < data.board.length; row++) {
-                        for (let col = 0; col < data.board[row].length; col++) {
-                            const cell = document.createElement("div");
-                            cell.classList.add("cell");
-
-                            if (data.board[row][col] == 1) {
-                                cell.classList.add("player1");
-                            } else if (data.board[row][col] == 2) {
-                                cell.classList.add("player2");
-                            }
-
-                            board.appendChild(cell);
-                        }
-                    }
-                });
-        }
-
-        loadGame();
-        setInterval(loadGame, 1000);
-    </script>
+    <script src="assets/js/game.js?v=3"></script>
 </body>
 </html>

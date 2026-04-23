@@ -25,10 +25,11 @@ echo json_encode([
     "success" => true,
     "id" => $game["id"],
     "board" => json_decode($game["board"]),
-    "current_player" => $game["current_player"],
-    "winner" => $game["winner"],
+    "current_player" => (int)$game["current_player"],
+    "winner" => $game["winner"] !== null ? (int)$game["winner"] : null,
     "status" => $game["status"],
     "player1" => $game["player1"],
-    "player2" => $game["player2"]
+    "player2" => $game["player2"],
+    "is_ai" => isset($game["is_ai"]) ? (int)$game["is_ai"] : 0
 ]);
 ?>

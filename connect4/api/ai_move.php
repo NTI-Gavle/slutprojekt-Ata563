@@ -4,14 +4,12 @@ ini_set('display_errors', 1);
 
 include __DIR__ . "/../config/db.php";
 
-if (!isset($_GET["game_id"]) || !isset($_GET["col"]) || !isset($_GET["player"])) {
-    echo json_encode(["success" => false, "message" => "Game ID, kolumn eller spelare saknas"]);
+if (!isset($_GET["game_id"])) {
+    echo json_encode(["success" => false, "message" => "Game ID saknas"]);
     exit;
 }
 
 $game_id = (int)$_GET["game_id"];
-$col = (int)$_GET["col"];
-$player = (int)$_GET["player"];
 
 $sql = "SELECT * FROM games WHERE id = $game_id";
 $result = $conn->query($sql);
@@ -23,24 +21,32 @@ if ($result->num_rows === 0) {
 
 $game = $result->fetch_assoc();
 
+if ((int)$game["is_ai"] !== 1) {
+    echo json_encode(["success" => false, "message" => "Detta är inte ett AI-spel"]);
+    exit;
+}
+
 if ($game["winner"] !== null) {
     echo json_encode(["success" => false, "message" => "Spelet är redan slut"]);
     exit;
 }
 
-if ($player !== (int)$game["current_player"]) {
-    echo json_encode(["success" => false, "message" => "Det är inte din tur"]);
+if ((int)$game["current_player"] !== 2) {
+    echo json_encode(["success" => false, "message" => "Det är inte AI:s tur"]);
+    exit;
+}
+
+if ($game["ai_move_at"] === null) {
+    echo json_encode(["success" => false, "message" => "Ingen AI-tid satt"]);
+    exit;
+}
+
+if (strtotime($game["ai_move_at"]) > time()) {
+    echo json_encode(["success" => false, "message" => "AI väntar fortfarande"]);
     exit;
 }
 
 $board = json_decode($game["board"], true);
-$current_player = (int)$game["current_player"];
-$is_ai = (int)$game["is_ai"];
-
-if ($col < 0 || $col > 6) {
-    echo json_encode(["success" => false, "message" => "Ogiltig kolumn"]);
-    exit;
-}
 
 function placePiece(&$board, $col, $player) {
     for ($row = 5; $row >= 0; $row--) {
@@ -65,9 +71,7 @@ function checkWinner($board, $player) {
                 $board[$row][$col + 1] == $player &&
                 $board[$row][$col + 2] == $player &&
                 $board[$row][$col + 3] == $player
-            ) {
-                return true;
-            }
+            ) return true;
 
             if (
                 $row + 3 < 6 &&
@@ -75,9 +79,7 @@ function checkWinner($board, $player) {
                 $board[$row + 1][$col] == $player &&
                 $board[$row + 2][$col] == $player &&
                 $board[$row + 3][$col] == $player
-            ) {
-                return true;
-            }
+            ) return true;
 
             if (
                 $row + 3 < 6 && $col + 3 < 7 &&
@@ -85,9 +87,7 @@ function checkWinner($board, $player) {
                 $board[$row + 1][$col + 1] == $player &&
                 $board[$row + 2][$col + 2] == $player &&
                 $board[$row + 3][$col + 3] == $player
-            ) {
-                return true;
-            }
+            ) return true;
 
             if (
                 $row - 3 >= 0 && $col + 3 < 7 &&
@@ -95,9 +95,7 @@ function checkWinner($board, $player) {
                 $board[$row - 1][$col + 1] == $player &&
                 $board[$row - 2][$col + 2] == $player &&
                 $board[$row - 3][$col + 3] == $player
-            ) {
-                return true;
-            }
+            ) return true;
         }
     }
 
@@ -118,13 +116,9 @@ function countWindowsScore($window, $aiPlayer, $humanPlayer) {
     $emptyCount = 0;
 
     foreach ($window as $cell) {
-        if ($cell == $aiPlayer) {
-            $aiCount++;
-        } elseif ($cell == $humanPlayer) {
-            $humanCount++;
-        } else {
-            $emptyCount++;
-        }
+        if ($cell == $aiPlayer) $aiCount++;
+        elseif ($cell == $humanPlayer) $humanCount++;
+        else $emptyCount++;
     }
 
     $score = 0;
@@ -145,9 +139,7 @@ function evaluateBoard($board, $aiPlayer) {
     $score = 0;
 
     for ($row = 0; $row < 6; $row++) {
-        if ($board[$row][3] == $aiPlayer) {
-            $score += 10;
-        }
+        if ($board[$row][3] == $aiPlayer) $score += 10;
     }
 
     for ($row = 0; $row < 6; $row++) {
@@ -184,9 +176,7 @@ function evaluateBoard($board, $aiPlayer) {
 function getValidColumns($board) {
     $valid = [];
     for ($col = 0; $col < 7; $col++) {
-        if (canPlace($board, $col)) {
-            $valid[] = $col;
-        }
+        if (canPlace($board, $col)) $valid[] = $col;
     }
     return $valid;
 }
@@ -211,18 +201,13 @@ function pickBestAiMove($board, $aiPlayer) {
 
     $bestScore = -9999999;
     $bestCol = $validCols[0];
-
     $preferredOrder = [3, 2, 4, 1, 5, 0, 6];
 
     foreach ($preferredOrder as $col) {
-        if (!in_array($col, $validCols)) {
-            continue;
-        }
+        if (!in_array($col, $validCols)) continue;
 
         $testBoard = simulateMove($board, $col, $aiPlayer);
-        if ($testBoard === null) {
-            continue;
-        }
+        if ($testBoard === null) continue;
 
         $score = evaluateBoard($testBoard, $aiPlayer);
 
@@ -237,9 +222,7 @@ function pickBestAiMove($board, $aiPlayer) {
             }
         }
 
-        if ($humanCanWinNext) {
-            $score -= 5000;
-        }
+        if ($humanCanWinNext) $score -= 5000;
 
         if ($score > $bestScore) {
             $bestScore = $score;
@@ -250,41 +233,28 @@ function pickBestAiMove($board, $aiPlayer) {
     return $bestCol;
 }
 
-if (!placePiece($board, $col, $current_player)) {
-    echo json_encode(["success" => false, "message" => "Kolumnen är full"]);
-    exit;
-}
+$aiCol = pickBestAiMove($board, 2);
+placePiece($board, $aiCol, 2);
 
 $winner = null;
-$status = $game["status"];
+$status = "playing";
+$current_player = 1;
 
-if (checkWinner($board, $current_player)) {
-    $winner = $current_player;
+if (checkWinner($board, 2)) {
+    $winner = 2;
     $status = "finished";
-}
-
-$next_player = $current_player == 1 ? 2 : 1;
-
-if ($winner === null && $is_ai === 1 && $next_player === 2) {
-    sleep(1);
-
-    $aiCol = pickBestAiMove($board, 2);
-    placePiece($board, $aiCol, 2);
-
-    if (checkWinner($board, 2)) {
-        $winner = 2;
-        $status = "finished";
-    } else {
-        $next_player = 1;
-    }
 }
 
 $boardJson = json_encode($board);
 
 if ($winner !== null) {
-    $updateSql = "UPDATE games SET board = '$boardJson', winner = $winner, status = '$status' WHERE id = $game_id";
+    $updateSql = "UPDATE games 
+                  SET board = '$boardJson', winner = 2, status = '$status', ai_move_at = NULL
+                  WHERE id = $game_id";
 } else {
-    $updateSql = "UPDATE games SET board = '$boardJson', current_player = $next_player WHERE id = $game_id";
+    $updateSql = "UPDATE games 
+                  SET board = '$boardJson', current_player = 1, ai_move_at = NULL
+                  WHERE id = $game_id";
 }
 
 if ($conn->query($updateSql) === TRUE) {
